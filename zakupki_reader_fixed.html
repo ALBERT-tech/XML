@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Читалка способов закупки по ссылке (223-ФЗ)</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; background: #eef2f7; margin: 0; padding: 20px; color: #1e2a3a; }
+        .container { max-width: 1300px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        header { background: #0b3b5f; color: white; padding: 20px 30px; }
+        header h1 { margin: 0; font-weight: 600; font-size: 1.8rem; }
+        header p { margin: 8px 0 0; opacity: 0.8; font-size: 0.95rem; }
+        .card { padding: 25px 30px; }
+        .input-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; background: #f8fafc; padding: 20px; border-radius: 16px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .field { flex: 4; min-width: 250px; }
+        .field label { display: block; font-weight: 600; margin-bottom: 6px; color: #0f3b5c; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .field input, .field select { width: 100%; padding: 10px 12px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 12px; transition: 0.2s; background: white; font-family: monospace; }
+        .field input:focus, .field select:focus { outline: none; border-color: #2c7da0; box-shadow: 0 0 0 3px rgba(44,125,160,0.2); }
+        button { background: #2c7da0; border: none; color: white; padding: 10px 24px; font-size: 1rem; font-weight: 600; border-radius: 40px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button:hover { background: #1f5e7a; transform: translateY(-1px); }
+        button:active { transform: translateY(1px); }
+        .mode-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; background: #fffbeb; padding: 15px 20px; border-radius: 16px; margin-bottom: 25px; border: 1px solid #fde68a; }
+        .info-note { background: #eef2ff; border-left: 5px solid #2c7da0; padding: 12px 18px; border-radius: 12px; font-size: 0.85rem; margin-bottom: 20px; color: #1e3a5f; }
+        .result-area { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        th { background: #1e4663; color: white; padding: 14px 12px; font-weight: 600; font-size: 0.9rem; text-align: left; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 12px; vertical-align: top; }
+        tr:hover td { background-color: #f1f9fe; }
+        .error-message { background: #fee2e2; border-left: 5px solid #dc2626; padding: 15px; border-radius: 12px; color: #991b1b; }
+        .success-message { background: #e0f2fe; border-left: 5px solid #0284c7; padding: 12px; border-radius: 12px; }
+        footer { background: #f1f5f9; text-align: center; padding: 15px; font-size: 0.75rem; color: #475569; border-top: 1px solid #e2e8f0; }
+        .loader { display: inline-block; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%; border-top-color: transparent; animation: spin 0.6s linear infinite; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .mono { font-family: monospace; font-size: 0.8rem; background: #f1f5f9; padding: 2px 5px; border-radius: 6px; }
+        kbd { background: #1e293b; color: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>📄 Читалка способов закупки (223-ФЗ)</h1>
+        <p>Вставьте ссылку на печатную форму (view.html) — приложение найдёт и загрузит XML</p>
+    </header>
+    <div class="card">
+
+        <div class="mode-row">
+            <div class="field" style="flex: 1; min-width: 260px;">
+                <label>⚙️ Режим загрузки</label>
+                <select id="modeSelect">
+                    <option value="local">Локальный прокси (рекомендуется) — http://127.0.0.1:8765</option>
+                    <option value="corsproxy">Публичный прокси corsproxy.io</option>
+                    <option value="allorigins">Публичный прокси allorigins.win</option>
+                    <option value="direct">Прямой запрос (обычно падает из-за CORS)</option>
+                    <option value="file">Ручная загрузка XML-файла</option>
+                </select>
+            </div>
+            <div id="fileFieldWrap" style="flex: 2; min-width: 260px; display: none;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #0f3b5c; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">📂 XML-файл</label>
+                <input type="file" id="xmlFile" accept=".xml">
+            </div>
+        </div>
+
+        <div class="input-group" id="urlGroup">
+            <div class="field">
+                <label>🔗 Ссылка на печатную форму (view.html)</label>
+                <input type="text" id="urlInput" value="https://zakupki.gov.ru/epz/orderclause/printForm/view.html?reestrNumber=1130016483&version=31" placeholder="https://zakupki.gov.ru/epz/orderclause/printForm/view.html?reestrNumber=...">
+            </div>
+            <div>
+                <button id="loadBtn">🔍 Загрузить</button>
+            </div>
+        </div>
+
+        <div class="info-note">
+            💡 <strong>Про режимы</strong><br>
+            • <b>Локальный прокси</b> — запустите в терминале <span class="mono">python proxy.py</span>, затем жмите «Загрузить». Работает надёжнее всего, не зависит от сторонних сервисов.<br>
+            • <b>Публичный прокси</b> — пробовать, если нет возможности запустить Python. Может быть нестабилен / ограничен по частоте запросов.<br>
+            • <b>Прямой запрос</b> — почти всегда падает с CORS-ошибкой, т.к. zakupki.gov.ru не отдаёт <span class="mono">Access-Control-Allow-Origin</span>.<br>
+            • <b>Ручная загрузка</b> — если нужно посмотреть уже скачанный XML.
+        </div>
+
+        <div id="resultArea" class="result-area">
+            <div class="success-message">✨ Выберите режим и нажмите «Загрузить».</div>
+        </div>
+    </div>
+    <footer>
+        ⚡ Для работы с zakupki.gov.ru рекомендуется локальный прокси (python proxy.py).
+    </footer>
+</div>
+
+<script>
+    // ---- Парсинг XML и отрисовка таблицы ----
+    function parseAndDisplay(xmlString) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+        const parserError = xmlDoc.querySelector("parsererror");
+        if (parserError) {
+            document.getElementById("resultArea").innerHTML =
+                `<div class="error-message">❌ Ошибка в структуре XML: ${escapeHtml(parserError.textContent)}</div>`;
+            return;
+        }
+
+        const purchaseMethods = xmlDoc.getElementsByTagNameNS("*", "purchaseMethod");
+        if (purchaseMethods.length === 0) {
+            document.getElementById("resultArea").innerHTML =
+                `<div class="error-message">⚠️ Не найдено ни одного &lt;purchaseMethod&gt;. Возможно, документ другого формата.</div>`;
+            return;
+        }
+
+        const methods = [];
+        for (let i = 0; i < purchaseMethods.length; i++) {
+            const m = purchaseMethods[i];
+            const codeElem = m.getElementsByTagNameNS("*", "purchaseMethodCode")[0];
+            const nameElem = m.getElementsByTagNameNS("*", "purchaseMethodName")[0];
+            methods.push({
+                code: codeElem ? codeElem.textContent.trim() : "—",
+                name: nameElem ? nameElem.textContent.trim() : "—"
+            });
+        }
+
+        let html = `<div class="success-message" style="background:#d9f0ec; margin-bottom: 15px;">✅ Найдено способов закупки: <strong>${methods.length}</strong></div>`;
+        html += `<div style="overflow-x: auto;"><table>
+            <thead><tr>
+                <th>Код<br><span style="font-weight:normal; font-size:0.75rem;">(purchaseMethodCode)</span></th>
+                <th>Способ закупки<br><span style="font-weight:normal; font-size:0.75rem;">(purchaseMethodName)</span></th>
+            </tr></thead><tbody>`;
+        methods.forEach(m => {
+            html += `<tr><td style="font-family: monospace;">${escapeHtml(m.code)}</td><td>${escapeHtml(m.name)}</td></tr>`;
+        });
+        html += `</tbody></table></div>`;
+        document.getElementById("resultArea").innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function convertToXmlUrl(originalUrl) {
+        return originalUrl.replace(/view\.html/, 'viewXml.html');
+    }
+
+    // ---- Построение URL fetch-а под выбранный режим ----
+    function buildFetchUrl(xmlUrl, mode) {
+        switch (mode) {
+            case "local":
+                return "http://127.0.0.1:8765/?url=" + encodeURIComponent(xmlUrl);
+            case "corsproxy":
+                return "https://corsproxy.io/?url=" + encodeURIComponent(xmlUrl);
+            case "allorigins":
+                return "https://api.allorigins.win/raw?url=" + encodeURIComponent(xmlUrl);
+            case "direct":
+            default:
+                return xmlUrl;
+        }
+    }
+
+    // ---- Основная загрузка ----
+    async function loadPurchaseMethods(originalUrl, mode) {
+        const resultDiv = document.getElementById("resultArea");
+        const xmlUrl = convertToXmlUrl(originalUrl);
+        const fetchUrl = buildFetchUrl(xmlUrl, mode);
+
+        resultDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; background: #f0f9ff; padding: 15px; border-radius: 16px;">
+                <div class="loader"></div>
+                <div>
+                    Режим: <b>${escapeHtml(mode)}</b><br>
+                    Источник XML: <span class="mono">${escapeHtml(xmlUrl)}</span><br>
+                    Fetch: <span class="mono">${escapeHtml(fetchUrl)}</span>
+                </div>
+            </div>`;
+
+        try {
+            const response = await fetch(fetchUrl, {
+                method: "GET",
+                headers: { "Accept": "application/xml, text/xml, */*" }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            const xmlText = await response.text();
+            if (xmlText.includes("Access Denied") || xmlText.includes("403 Forbidden")) {
+                throw new Error("Доступ запрещён (403).");
+            }
+            parseAndDisplay(xmlText);
+        } catch (err) {
+            console.error(err);
+            let hint = "";
+            if (mode === "local") {
+                hint = `<br><br>💡 Убедитесь, что прокси запущен: в терминале выполните <span class="mono">python proxy.py</span>.`;
+            } else if (mode === "direct") {
+                hint = `<br><br>💡 Прямой запрос почти всегда блокируется CORS-политикой. Переключитесь на локальный или публичный прокси.`;
+            } else {
+                hint = `<br><br>💡 Попробуйте другой режим (например, локальный прокси).`;
+            }
+            resultDiv.innerHTML = `<div class="error-message">❌ ${escapeHtml(err.message)}${hint}<br><br>
+                Прямая ссылка на XML: <a href="${escapeHtml(xmlUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(xmlUrl)}</a>
+                (можно скачать вручную и загрузить в режиме «Ручная загрузка»).</div>`;
+        }
+    }
+
+    // ---- Переключение режимов ----
+    const modeSelect = document.getElementById("modeSelect");
+    const fileFieldWrap = document.getElementById("fileFieldWrap");
+    const urlGroup = document.getElementById("urlGroup");
+
+    function applyMode() {
+        const mode = modeSelect.value;
+        if (mode === "file") {
+            fileFieldWrap.style.display = "";
+            urlGroup.style.display = "none";
+        } else {
+            fileFieldWrap.style.display = "none";
+            urlGroup.style.display = "";
+        }
+    }
+    modeSelect.addEventListener("change", applyMode);
+    applyMode();
+
+    // ---- Ручная загрузка файла ----
+    document.getElementById("xmlFile").addEventListener("change", function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => parseAndDisplay(ev.target.result);
+        reader.readAsText(file, "UTF-8");
+    });
+
+    // ---- Кнопка «Загрузить» ----
+    document.getElementById("loadBtn").addEventListener("click", () => {
+        const originalUrl = document.getElementById("urlInput").value.trim();
+        const mode = modeSelect.value;
+
+        if (!originalUrl) {
+            document.getElementById("resultArea").innerHTML =
+                `<div class="error-message">Введите ссылку на печатную форму (view.html)</div>`;
+            return;
+        }
+        if (!originalUrl.includes('view.html') && !originalUrl.includes('viewXml.html')) {
+            if (!confirm('Ссылка не содержит "view.html". Попробовать как есть?')) return;
+        }
+        loadPurchaseMethods(originalUrl, mode);
+    });
+</script>
+</body>
+</html>
